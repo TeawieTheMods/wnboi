@@ -3,6 +3,10 @@ package com.samsthenerd.wnboi.utils;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.client.gui.DrawContext;
+import net.minecraft.client.render.*;
+import net.minecraft.util.math.RotationAxis;
+import org.joml.Quaternionf;
 import org.lwjgl.opengl.GL30;
 
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -12,12 +16,6 @@ import com.samsthenerd.wnboi.WNBOI;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gl.Framebuffer;
 import net.minecraft.client.gl.SimpleFramebuffer;
-import net.minecraft.client.gui.DrawableHelper;
-import net.minecraft.client.render.BufferBuilder;
-import net.minecraft.client.render.DiffuseLighting;
-import net.minecraft.client.render.VertexConsumerProvider;
-import net.minecraft.client.render.VertexFormat;
-import net.minecraft.client.render.VertexFormats;
 import net.minecraft.client.render.entity.EntityRenderDispatcher;
 import net.minecraft.client.util.Window;
 import net.minecraft.client.util.math.MatrixStack;
@@ -25,9 +23,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.item.ItemStack;
 import net.minecraft.text.Text;
 import net.minecraft.util.math.ColorHelper.Argb;
-import net.minecraft.util.math.Quaternion;
 import net.minecraft.util.math.Vec3d;
-import net.minecraft.util.math.Vec3f;
 
 /*
  * just some functions for rendering math.
@@ -186,10 +182,10 @@ public class RenderUtils {
     }
 
     // renders the item icon with more options available, might be bad for performance? use with caution for sure
-    public static void renderItemIcon(MatrixStack matrices, ItemStack stack, int x, int y, int argb){
+    public static void renderItemIcon(DrawContext context, ItemStack stack, int x, int y, int argb){
         setupTransparencyFrameBuffer();
-        MinecraftClient.getInstance().getItemRenderer().renderGuiItemIcon(stack, x, y);
-        drawTransparencyBuffer(matrices, argb);
+        context.drawItem(stack, x, y);
+        drawTransparencyBuffer(context, argb);
     }
 
     // inspired by https://github.com/wisp-forest/owo-lib/blob/1.19.3/src/main/java/io/wispforest/owo/ui/container/RenderEffectWrapper.java
@@ -206,19 +202,21 @@ public class RenderUtils {
         transFrameBuffer.beginWrite(false);
     }
 
-    public static void drawTransparencyBuffer(MatrixStack matrices, int argb){
+    public static void drawTransparencyBuffer(DrawContext context, int argb){
         GlStateManager._glBindFramebuffer(GL30.GL_FRAMEBUFFER, initialFrameBuffer);
         RenderSystem.setShaderColor(Argb.getRed(argb)/255f, Argb.getGreen(argb)/255f, Argb.getBlue(argb)/255f, Argb.getAlpha(argb)/255f);
         RenderSystem.enableBlend();
         RenderSystem.setShaderTexture(0, transFrameBuffer.getColorAttachment());
 
         Window window = MinecraftClient.getInstance().getWindow();
-        // DrawableHelper.drawTexture(matrices, 0, 0, 0, window.getScaledHeight(), window.getWidth(), window.getHeight(), window.getScaledWidth(), window.getScaledHeight());
-        DrawableHelper.drawTexture(matrices, 0, 0,
-            window.getScaledWidth(), window.getScaledHeight(),
-            0, transFrameBuffer.textureHeight,
-            transFrameBuffer.textureWidth, -transFrameBuffer.textureHeight,
-            transFrameBuffer.textureWidth, transFrameBuffer.textureHeight);
+        var buffer = RenderSystem.renderThreadTesselator().getBuffer();
+        var matrix = context.getMatrices().peek().getPositionMatrix();
+        buffer.begin(VertexFormat.DrawMode.QUADS, VertexFormats.POSITION_TEXTURE);
+        buffer.vertex(matrix, 0, window.getScaledHeight(), 0).texture(0, 0).next();
+        buffer.vertex(matrix, window.getScaledWidth(), window.getScaledHeight(), 0).texture(1, 0).next();
+        buffer.vertex(matrix, window.getScaledWidth(), 0, 0).texture(1, 1).next();
+        buffer.vertex(matrix, 0, 0, 0).texture(0, 1).next();
+        BufferRenderer.drawWithGlobalProgram(buffer.end());
         RenderSystem.disableBlend();
         RenderSystem.setShaderColor(1,1,1,1);
     }
@@ -233,7 +231,7 @@ public class RenderUtils {
         MatrixStack matrixStack2 = new MatrixStack();
         matrixStack2.translate(0.0, 0.0, 1000.0);
         matrixStack2.scale(size, size, size);
-        Quaternion quaternion = Vec3f.POSITIVE_Z.getDegreesQuaternion(180.0f);
+        Quaternionf quaternion = RotationAxis.POSITIVE_Z.rotationDegrees(180.0f);
         // Quaternion quaternion2 = Vec3f.POSITIVE_X.getDegreesQuaternion(g * 20.0f);
         // quaternion.hamiltonProduct(quaternion2);
         matrixStack2.multiply(quaternion);
@@ -251,8 +249,8 @@ public class RenderUtils {
         DiffuseLighting.enableGuiDepthLighting();
     }
 
-    public static void renderText(MatrixStack matrices, Text text, int x, int y, int color){
-        MinecraftClient.getInstance().textRenderer.draw(matrices, text, x, y, color);
+    public static void renderText(DrawContext context, Text text, int x, int y, int color){
+        context.drawText(MinecraftClient.getInstance().textRenderer, text, x, y, color, false);
     }
 
 

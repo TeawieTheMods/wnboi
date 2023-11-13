@@ -1,5 +1,8 @@
 package com.samsthenerd.wnboi;
 
+import net.minecraft.registry.Registries;
+import net.minecraft.registry.Registry;
+import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -18,7 +21,7 @@ public class WNBOIFabric implements ModInitializer {
 		// However, some things (like resources) may still be uninitialized.
 		// Proceed with mild caution.
 
-		// Registry.register(Registry.ITEM, new Identifier("wnboi", "test_wheel_item"), WNBOI.TEST_WHEEL_ITEM);
+//		 Registry.register(Registries.ITEM, new Identifier("wnboi", "test_wheel_item"), WNBOI.TEST_WHEEL_ITEM);
 
 		LOGGER.info("Hello Fabric world!");
 	}

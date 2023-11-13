@@ -3,6 +3,7 @@ package com.samsthenerd.wnboi.screen;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.minecraft.client.gui.DrawContext;
 import org.lwjgl.glfw.GLFW;
 
 import com.samsthenerd.wnboi.WNBOI;
@@ -181,25 +182,25 @@ public class AbstractContextWheelScreen extends Screen{
     }
 
     @Override
-    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta) {
+    public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         currentTime = MinecraftClient.getInstance().world.getTime() + delta;
         updateSelectedSection(mouseX, mouseY);
-        super.render(matrices, mouseX, mouseY, delta);
+        super.render(context, mouseX, mouseY, delta);
         for(SpokeRenderer sr : spokeRenderers){
-            sr.render(matrices, mouseX, mouseY, delta);
+            sr.render(context, mouseX, mouseY, delta);
         }
-        tryRenderTooltip(matrices, mouseX, mouseY);
+        tryRenderTooltip(context, mouseX, mouseY);
     }
 
-    public void tryRenderTooltip(MatrixStack matrices, int mouseX, int mouseY){
+    public void tryRenderTooltip(DrawContext context, int mouseX, int mouseY){
         if(selectedSection != -1 && (currentTime - lastStateChange) >= tooltipTickDelay){
-            doRenderTooltip(matrices, mouseX, mouseY);
+            doRenderTooltip(context, mouseX, mouseY);
         }
     }
 
     // override this to change the tooltip
-    protected void doRenderTooltip(MatrixStack matrices, int mouseX, int mouseY){
-        this.renderTooltip(matrices, Text.of("tooltip for section " + selectedSection), mouseX, mouseY);
+    protected void doRenderTooltip(DrawContext context, int mouseX, int mouseY){
+        context.drawTooltip(MinecraftClient.getInstance().textRenderer, Text.of("tooltip for section " + selectedSection), mouseX, mouseY);
     }
 
     public boolean shouldPause() {

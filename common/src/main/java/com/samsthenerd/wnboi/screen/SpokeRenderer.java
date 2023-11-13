@@ -1,5 +1,6 @@
 package com.samsthenerd.wnboi.screen;
 
+import java.awt.image.renderable.RenderContext;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -10,6 +11,7 @@ import com.samsthenerd.wnboi.utils.RenderUtils;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.Drawable;
 import net.minecraft.client.render.BufferBuilder;
 import net.minecraft.client.render.GameRenderer;
@@ -193,7 +195,7 @@ public class SpokeRenderer implements Drawable{
         return curvePoints;
     }
 
-    public void drawFill(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    public void drawFill(DrawContext context, int mouseX, int mouseY, float delta){
         List<Vec3d> outerCurvePoints = getOuterCurvePoints();
         List<Vec3d> innerCurvePoints = getInnerCurvePoints();
         Tessellator tessellator = Tessellator.getInstance();
@@ -203,7 +205,7 @@ public class SpokeRenderer implements Drawable{
         bufferBuilder.begin(VertexFormat.DrawMode.TRIANGLE_STRIP , VertexFormats.POSITION_COLOR);
 
 
-        int numPoints = outerCurvePoints.size() > innerCurvePoints.size() ? outerCurvePoints.size() : innerCurvePoints.size();
+        int numPoints = Math.max(outerCurvePoints.size(), innerCurvePoints.size());
 
         double inMult = innerCurvePoints.size() / (double)numPoints;
         double outMult = outerCurvePoints.size() / (double)numPoints;
@@ -217,7 +219,7 @@ public class SpokeRenderer implements Drawable{
             bufferBuilder.vertex(outerCurvePoints.get(outI).x, outerCurvePoints.get(outI).y, 0).color(outARGB).next();
         }
 
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.enableBlend();
         RenderSystem.disableCull();
         tessellator.draw();
@@ -237,7 +239,7 @@ public class SpokeRenderer implements Drawable{
     }
 
     // need to clean this up
-    public void drawOutline(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    public void drawOutline(DrawContext context, int mouseX, int mouseY, float delta){
         Tessellator tessellator = Tessellator.getInstance();
         BufferBuilder bufferBuilder = tessellator.getBuffer();
 
@@ -252,28 +254,28 @@ public class SpokeRenderer implements Drawable{
             bufferBuilder.vertex(point.x, point.y, 0).color(vColor).next();
         }
 
-        RenderSystem.setShader(GameRenderer::getPositionColorShader);
+        RenderSystem.setShader(GameRenderer::getPositionColorProgram);
         RenderSystem.disableCull();
         tessellator.draw();
         RenderSystem.enableCull();
     }
 
     @Override
-    public void render(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    public void render(DrawContext context, int mouseX, int mouseY, float delta){
         // WNBOI.logPrint("rendering spoke " + sectionIndex);
 
         currentTime = MinecraftClient.getInstance().world.getTime() + delta;
 
 
-        drawFill(matrices, mouseX, mouseY, delta);
+        drawFill(context, mouseX, mouseY, delta);
 
-        drawOutline(matrices, mouseX, mouseY, delta);
-        renderLabel(matrices, mouseX, mouseY, delta);
+        drawOutline(context, mouseX, mouseY, delta);
+        renderLabel(context, mouseX, mouseY, delta);
         return;
     }
 
     // general call to render the label - override to call whichever you'd like
-    public void renderLabel(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    public void renderLabel(DrawContext context, int mouseX, int mouseY, float delta){
         // renderItemLabel(matrices, mouseX, mouseY, delta);
         // renderEntityLabel(matrices, mouseX, mouseY, delta);
         // renderTextLabel(matrices, mouseX, mouseY, delta);
@@ -282,19 +284,19 @@ public class SpokeRenderer implements Drawable{
     // some basic label renderers. feel free to override and do your own thing.
     // you may need to make new render functions like I have in RenderUtils to suit your needs
 
-    protected void renderItemLabel(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    protected void renderItemLabel(DrawContext context, int mouseX, int mouseY, float delta){
         if(labelItemStack == null){
             return;
         }
         // int transpARGB = Argb.getArgb(128, 255, 255, 255);
         ItemRenderer itemRenderer = MinecraftClient.getInstance().getItemRenderer();
         int labelDistToUse = (labelDist == null) ? (int)(outerRadius / 2) : labelDist;
-        // RenderUtils.renderItemIcon(matrices, labelItemStack, 
-        itemRenderer.renderGuiItemIcon(labelItemStack, 
+        // RenderUtils.renderItemIcon(matrices, labelItemStack,
+        context.drawItem(labelItemStack,
             (int)(-8+originX+offsetX+Math.cos(midAngle)*labelDistToUse), (int)(-8+originY+offsetY+Math.sin(midAngle)*labelDistToUse));
     }
 
-    public void renderEntityLabel(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    public void renderEntityLabel(DrawContext context, int mouseX, int mouseY, float delta){
         if(labelEntity == null){
             return;
         }
@@ -305,13 +307,13 @@ public class SpokeRenderer implements Drawable{
         RenderUtils.drawEntity((int)(originX+offsetX+Math.cos(midAngle)*labelDistToUse), (int)(originY+offsetY+Math.sin(midAngle)*labelDistToUse), sizeToUse, labelEntity);
     }
 
-    public void renderTextLabel(MatrixStack matrices, int mouseX, int mouseY, float delta){
+    public void renderTextLabel(DrawContext context, int mouseX, int mouseY, float delta){
         if(labelText == null){
             return;
         }
         int labelDistToUse = (labelDist == null) ? (int)(outerRadius / 2) : labelDist;
         int width = MinecraftClient.getInstance().textRenderer.getWidth(labelText);
-        RenderUtils.renderText(matrices, labelText, (int)(-(width/2)+originX+offsetX+Math.cos(midAngle)*labelDistToUse), (int)(-(width/2)+originY+offsetY+Math.sin(midAngle)*labelDistToUse), 0xFFFFFFFF);
+        RenderUtils.renderText(context, labelText, (int)(-(width/2)+originX+offsetX+Math.cos(midAngle)*labelDistToUse), (int)(-(width/2)+originY+offsetY+Math.sin(midAngle)*labelDistToUse), 0xFFFFFFFF);
     }
 
     // gets the color for a specific vertex. returns argb value
